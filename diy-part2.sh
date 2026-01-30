@@ -56,6 +56,6 @@ TMP_DIR=$(mktemp -d)
 unzip -d "$TMP_DIR" easytier.zip
 rm "$TMP_DIR"/easytier-linux-aarch64/easytier-web-embed
 mv "$TMP_DIR"/easytier-linux-aarch64/* "$BIN_DIR/"
-chmod +x "$BIN_DIR/easytier-*"
+chmod +x "$BIN_DIR"/easytier-*
 rm -rf "$TMP_DIR"
 rm easytier.zip
