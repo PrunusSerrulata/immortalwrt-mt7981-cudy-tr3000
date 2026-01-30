@@ -35,6 +35,8 @@ sed -i 's/reg = <0x5c0000 0x7000000>;/reg = <0x5c0000 0x7a40000>;/' target/linux
 # chmod +x files/etc/openclash/core/clash_meta
 # rm -f "clash_meta.tar.gz"
 
+BIN_DIR="$GITHUB_WORKSPACE/openwrt/files/usr/bin"
+mkdir -p "$BIN_DIR"
 # -------- 下载并解压 sing-box ARM64 -------
 echo "Downloading sing-box..."
 SINGBOX_VER="1.12.17"
@@ -45,3 +47,15 @@ mv "$TMP_DIR"/sing-box-${SINGBOX_VER}-linux-arm64/sing-box "$BIN_DIR"/sing-box
 chmod +x "$BIN_DIR/sing-box"
 rm -rf "$TMP_DIR"
 rm sing-box.tar.gz
+
+# -------- 下载并解压 easytier ARM64 -------
+echo "Downloading easytier..."
+EASYTIER_VER="2.5.0"
+curl -L -o easytier.zip https://github.com/EasyTier/EasyTier/releases/download/v2.5.0/easytier-linux-aarch64-v${EASYTIER_VER}.zip
+TMP_DIR=$(mktemp -d)
+unzip -d "$TMP_DIR" easytier.zip
+rm "$TMP_DIR"/easytier-linux-aarch64/easytier-web-embed
+mv "$TMP_DIR"/easytier-linux-aarch64/* "$BIN_DIR/"
+chmod +x "$BIN_DIR/easytier-*"
+rm -rf "$TMP_DIR"
+rm easytier.zip
