@@ -18,6 +18,11 @@ on:
           - '128M'
           - '128M-Ubootmod'
           - 'all' 
+      repo:
+        description: '指定源码仓库地址'
+        required: true
+        type: string
+        default: 'https://github.com/padavanonly/immortalwrt-mt798x-6.6'
       commit:
         description: '指定源码commit进行编译，留空拉取最新源码'
         required: false
@@ -28,6 +33,11 @@ on:
         required: false
         type: boolean
         default: false
+      release:
+        description: '是否发布编译产物到 Release'
+        required: false
+        type: boolean
+        default: true
       prerelease:
         description: '是否发布为预发布版本 (Pre-release)'
         required: false
@@ -38,13 +48,13 @@ env:
   DEVICE_INPUT: ${{ github.event.inputs.device || github.event.client_payload.device }}
   CCACHE_DIR: /workdir/.ccache
   CCACHE_MAXSIZE: 2G
-  REPO_URL: https://github.com/padavanonly/immortalwrt-mt798x-6.6
+  REPO_URL: ${{ github.event.inputs.repo }}
   REPO_BRANCH: openwrt-24.10-6.6
   REPO_COMMIT: ${{ github.event.inputs.commit }}
   FEEDS_CONF: feeds.conf.default
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
-  UPLOAD_RELEASE: true
+  UPLOAD_RELEASE: ${{ github.event.inputs.release }}
   PRERELEASE: ${{ github.event.inputs.prerelease }}
   TZ: Asia/Shanghai
 
@@ -180,6 +190,8 @@ jobs:
           $GITHUB_WORKSPACE/$DIY_P1_SH
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+          chmod +x $GITHUB_WORKSPACE/$DIY_P2_SH
+          $GITHUB_WORKSPACE/$DIY_P2_SH
 
       - name: 🔨 Multi-Device Compilation Loop
         id: compile
@@ -209,9 +221,6 @@ jobs:
             
             # 3. 加载配置
             cp -f $GITHUB_WORKSPACE/$CONFIG .config
-            # 执行 DIY 脚本处理
-            chmod +x $GITHUB_WORKSPACE/$DIY_P2_SH
-            $GITHUB_WORKSPACE/$DIY_P2_SH
             
             # 4. 刷新配置并下载
             make defconfig
@@ -228,7 +237,6 @@ jobs:
             # 直接寻找所有 bin 文件并复制
             echo "📥 Collecting artifacts for $DEV..."
             find bin/targets/ -name "*sysupgrade.bin" -exec cp {} $GITHUB_WORKSPACE/firmware_collection/ \;
-            find bin/targets/ -name "*.itb" -exec cp {} $GITHUB_WORKSPACE/firmware_collection/ \; || true
 
             # 8. 定向清理
             echo "🧹 Partial cleaning to save disk space while keeping toolchain..."
@@ -250,10 +258,10 @@ jobs:
 
       - name: 📌 Generate Release Tag
         id: tag
-        if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+        if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true'
         run: |
           BUILD_TIME=$(date +"%Y%m%d-%H%M")
-          RELEASE_TAG="${DEVICE_INPUT}-${BUILD_TIME}"
+          RELEASE_TAG="ImmortalWrt-${BUILD_TIME}"
           echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
 
           cat > release.txt << EOF
@@ -278,7 +286,7 @@ jobs:
 
       - name: 📤 Upload to Release
         uses: softprops/action-gh-release@v2
-        if: steps.tag.outputs.status == 'success' && !cancelled()
+        if: steps.tag.outputs.status == 'success'
         with:
           tag_name: ${{ steps.tag.outputs.release_tag }}
           body_path: release.txt
